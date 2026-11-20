@@ -22,22 +22,44 @@ client = OpenAI(
 )
 
 # Veritabanı yolları
-db_path = "./epidemic_db"
-zip_path = "./epidemic_db.zip"
 
-# Veritabanı klasörü yoksa ZIP dosyasını çıkar
-if not os.path.exists(db_path):
-    if os.path.exists(zip_path):
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(".")
-    else:
+# Veritabanı yolları
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+zip_path = os.path.join(BASE_DIR, "epidemic_db.zip")
+db_path = os.path.join(BASE_DIR, "epidemic_db - Kopya")
+
+# Veritabanı mevcut değilse ZIP dosyasını çıkar
+if not os.path.exists(os.path.join(db_path, "chroma.sqlite3")):
+
+    if not os.path.exists(zip_path):
         raise FileNotFoundError("epidemic_db.zip bulunamadı.")
+
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(BASE_DIR)
+
+# Veritabanını kontrol et
+if not os.path.exists(os.path.join(db_path, "chroma.sqlite3")):
+    raise FileNotFoundError("ChromaDB veritabanı bulunamadı.")
 
 # ChromaDB bağlantısı
 client_db = chromadb.PersistentClient(path=db_path)
 
+# Koleksiyonları kontrol et
+collection_names = [
+    collection.name
+    for collection in client_db.list_collections()
+]
+
+if "epidemic_data" not in collection_names:
+    raise ValueError(
+        f"epidemic_data koleksiyonu bulunamadı. "
+        f"Mevcut koleksiyonlar: {collection_names}"
+    )
+
 # Koleksiyonu aç
 col = client_db.get_collection("epidemic_data")
+
 
 
 def salgin_analizi(soru):
